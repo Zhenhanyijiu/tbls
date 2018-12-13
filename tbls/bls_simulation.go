@@ -22,7 +22,7 @@ type BlsGroupPoint struct {
 	ThresholdValue int
 }
 
-func InitBls(groupSize int, blsGroupPoint *BlsGroupPoint) {
+func InitBlsGroup(groupSize int, blsGroupPoint *BlsGroupPoint) {
 	bls.Init(bls.CurveFp254BNb)
 	if groupSize <= 0 {
 		fmt.Println("GroupSize is invalid!")
@@ -140,92 +140,48 @@ func GenPubKeyAggerate(receiveComsPoint *map[string][]string, thresValue int) ma
 	return pubKeyAgg
 }
 
-func GenBlsSignShares(groupSize int) (*BlsSharePoint, error) {
+func GenBlsSignShares(blsGroupPoint *BlsGroupPoint, height int64) (*BlsSharePoint, string, string) {
 	bls.Init(bls.CurveFp254BNb)
-	thresValue := 0
-	if groupSize == 2 {
-		thresValue = 2
-	} else {
-		thresValue = (groupSize + 1) / 2
+	if height < 0 {
+		fmt.Println("height is invalid!")
+		return nil, "ThresholdSign", "RandSeed"
 	}
-
-	groupNodeID := make([]string, groupSize)
-	receiveCommitment := map[string][]string{}
-
-	simBlsStructs := make([]BlsMember, groupSize)
-	for i := 0; i < groupSize; i++ {
-		simBlsStructs[i] = RandBlsMember()
-		groupNodeID[i] = simBlsStructs[i].memberID
-		simBlsStructs[i].receiveSecretShares = make([]string, groupSize)
-	}
-
-	for i := 0; i < groupSize; i++ {
-		simBlsStructs[i].polyCoeffs = make([]string, thresValue)
-		coeffPoly := simBlsStructs[i].priva0.GetMasterSecretKey(thresValue)
-		for index, v := range coeffPoly {
-			simBlsStructs[i].polyCoeffs[index] = v.GetHexString()
-		}
-
-		simBlsStructs[i].commitment = make([]string, thresValue)
-		commits := bls.GetMasterPublicKey(coeffPoly)
-		for index, v := range commits {
-			simBlsStructs[i].commitment[index] = v.GetHexString()
-		}
-		receiveCommitment[groupNodeID[i]] = simBlsStructs[i].commitment
-
-		//generate secret shares
-		var targetID bls.ID
-		var sk bls.SecretKey
-		skShare := make([]string, groupSize)
-		for i := 0; i < groupSize; i++ {
-			targetID.SetHexString(groupNodeID[i])
-			if thresValue == 1 {
-				skShare[i] = simBlsStructs[i].priva0.GetHexString()
-			} else {
-				sk.Set(coeffPoly, &targetID)
-				skShare[i] = sk.GetHexString()
-			}
-		}
-		simBlsStructs[i].secretShares = skShare
-	}
-
-	for i := 0; i < groupSize; i++ {
-		for index, share := range simBlsStructs[i].secretShares {
-			simBlsStructs[index].receiveSecretShares[i] = share
-		}
-	}
-
 	initMessage := "201812121348"
-	signShares := map[string]string{}
-	for i := 0; i < groupSize; i++ {
-		sk := []bls.SecretKey{}
-		for _, v := range simBlsStructs[i].receiveSecretShares {
-			var skSource bls.SecretKey
-			skSource.SetHexString(v)
-			sk = append(sk, skSource)
-		}
-		var skAgg bls.SecretKey
-		skAgg = SeckeyAggregate(sk)
-		simBlsStructs[i].secretAggregate = skAgg.GetHexString()
+	nextMessge := initMessage
+	groupSize := len(blsGroupPoint.blsMembers)
+	signShares := make(map[string]string, groupSize)
+	var thresSign string
+	var randSeed string
+	for heig := 0; int64(heig) <= height; heig++ {
 
-		signShares[simBlsStructs[i].memberID] = skAgg.Sign(initMessage).GetHexString()
+		if heig > 0 {
+			nextMessge = thresSign + randSeed
+		}
+		for _, blsMember := range blsGroupPoint.blsMembers {
+			var secretAgg bls.SecretKey
+			secretAgg.SetHexString(blsMember.secretAggregate)
+			signShares[blsMember.memberID] = secretAgg.Sign(nextMessge).GetHexString()
+		}
+
+		thresSign, _ = GenThresholdSign(signShares)
+		randSeed = GenerateSeed(thresSign)
 	}
 
 	return &BlsSharePoint{
 		SignShares:     signShares,
-		ThresholdValue: thresValue,
-	}, nil
+		ThresholdValue: blsGroupPoint.ThresholdValue,
+	}, thresSign, randSeed
 }
 
-func GenSeedFromBls(signShares map[string]string) (string, error) {
+func GenThresholdSign(signShares map[string]string) (string, error) {
 	bls.Init(bls.CurveFp254BNb)
-	signSlice := []string{}
-	groupNodeID := []string{}
-	for nodeID, sign := range signShares {
-		groupNodeID = append(groupNodeID, nodeID)
-		signSlice = append(signSlice, sign)
+	signVec := []string{}
+	memberIDVec := []string{}
+	for memberID, signShare := range signShares {
+		memberIDVec = append(memberIDVec, memberID)
+		signVec = append(signVec, signShare)
 	}
-	return GenerateSeed(SigRecover(signSlice, groupNodeID)), nil
+	return SigRecover(signVec, memberIDVec), nil
 }
 
 type BlsMember struct {

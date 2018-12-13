@@ -1,14 +1,12 @@
 package main
 
 import (
-	"./libbls/bls/bls"
 	"fmt"
+	"github.com/zhenhanyijiu/tbls/tbls"
 )
 
 func main() {
-	bls.Init(bls.CurveFp254BNb)
-	var sk bls.SecretKey
-	sk.SetByCSPRNG()
-	fmt.Println("sk==>", sk.GetHexString())
-
+	signShare, _ := tbls.GenBlsSignShares(4)
+	seed, _ := tbls.GenSeedFromBls(signShare.SignShares)
+	fmt.Println("seed==", seed)
 }

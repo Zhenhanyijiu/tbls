@@ -18,7 +18,7 @@ type BlsSharePoint struct {
 	ThresholdValue int               `json:"threshold_value"`
 }
 type BlsGroupPoint struct {
-	blsMembers     []BlsMember
+	BlsMembers     []BlsMember
 	ThresholdValue int
 }
 
@@ -29,14 +29,20 @@ func InitBlsGroup(groupSize int, blsGroupPoint *BlsGroupPoint) {
 	}
 	thresValue := groupSize/2 + 1
 	groupMemberIDs := make([]string, groupSize)
-	receiveCommitments := map[string][]string{}
-
+	receiveCommitments := make(map[string][]string, groupSize)
 	simBlsMembers := make([]BlsMember, groupSize)
+
 	//generate groupsize bls member
 	for i := 0; i < groupSize; i++ {
 		simBlsMembers[i] = RandBlsMember()
 		groupMemberIDs[i] = simBlsMembers[i].memberID
 		simBlsMembers[i].receiveSecretShares = make([]string, groupSize)
+	}
+
+	//output
+	fmt.Println("ThresholdValue=", thresValue)
+	for i := 0; i < groupSize; i++ {
+		//fmt.Println("simBlsMembers[i]", "index=", i, "memberID=", simBlsMembers[i].memberID, "priva0=", simBlsMembers[i].priva0.GetHexString())
 	}
 
 	for i := 0; i < groupSize; i++ {
@@ -46,28 +52,35 @@ func InitBlsGroup(groupSize int, blsGroupPoint *BlsGroupPoint) {
 		for index, coeff := range polyCoeffs {
 			simBlsMembers[i].polyCoeffs[index] = coeff.GetHexString()
 		}
+		//for index, coeff := range simBlsMembers[i].polyCoeffs {
+		//	//fmt.Println("simBlsMembers[i]", "index=", i, "i=", index, "ai=", coeff)
+		//}
 		//generate commitment for polynomial coeefficient
 		simBlsMembers[i].commitment = make([]string, thresValue)
 		coeffComs := bls.GetMasterPublicKey(polyCoeffs)
 		for index, com := range coeffComs {
 			simBlsMembers[i].commitment[index] = com.GetHexString()
 		}
-		receiveCommitments[groupMemberIDs[i]] = simBlsMembers[i].commitment
+		receiveCommitments[simBlsMembers[i].memberID] = simBlsMembers[i].commitment
+
+		//fmt.Println("memberID=", simBlsMembers[i].memberID, "commitment", receiveCommitments[simBlsMembers[i].memberID])
 
 		//generate secret shares
 		var targetID bls.ID
 		var sk bls.SecretKey
 		secShares := make([]string, groupSize)
-		for i := 0; i < groupSize; i++ {
-			targetID.SetHexString(groupMemberIDs[i])
+		for j := 0; j < groupSize; j++ {
+			targetID.SetHexString(groupMemberIDs[j])
 			if thresValue == 1 {
-				secShares[i] = simBlsMembers[i].priva0.GetHexString()
+				secShares[j] = simBlsMembers[j].priva0.GetHexString()
 			} else {
 				sk.Set(polyCoeffs, &targetID)
-				secShares[i] = sk.GetHexString()
+				secShares[j] = sk.GetHexString()
 			}
 		}
 		simBlsMembers[i].secretShares = secShares
+
+		//fmt.Println("simBlsMembers[i].secretShares==", simBlsMembers[i].secretShares)
 	}
 
 	//DKG,receive secret shares
@@ -75,17 +88,23 @@ func InitBlsGroup(groupSize int, blsGroupPoint *BlsGroupPoint) {
 		for index, share := range simBlsMembers[i].secretShares {
 			simBlsMembers[index].receiveSecretShares[i] = share
 		}
+
 	}
 
+	for i := 0; i < groupSize; i++ {
+		//fmt.Println("receiveSecretShares==", simBlsMembers[i].receiveSecretShares)
+	}
 	//generate group public key
-	pks := make([]bls.PublicKey, groupSize)
-	i := 0
+	pks := []bls.PublicKey{}
 	for _, commitment := range receiveCommitments {
 		var pk bls.PublicKey
 		pk.SetHexString(commitment[0])
-		pks[i] = pk
-		i++
+		pks = append(pks, pk)
 	}
+	for i := 0; i < groupSize; i++ {
+		//fmt.Println("pks==", pks[i].GetHexString())
+	}
+
 	gpk := GenGroupPubKey(pks)
 
 	//generate public key aggregate
@@ -93,7 +112,7 @@ func InitBlsGroup(groupSize int, blsGroupPoint *BlsGroupPoint) {
 
 	//generate secret key aggregate
 	for i := 0; i < groupSize; i++ {
-		secKeys := make([]bls.SecretKey, thresValue)
+		secKeys := make([]bls.SecretKey, groupSize)
 		for index, recShare := range simBlsMembers[i].receiveSecretShares {
 			var secKey bls.SecretKey
 			secKey.SetHexString(recShare)
@@ -104,8 +123,11 @@ func InitBlsGroup(groupSize int, blsGroupPoint *BlsGroupPoint) {
 		simBlsMembers[i].secretAggregate = secretAgg.GetHexString()
 		simBlsMembers[i].groupPubKey = gpk.GetHexString()
 		simBlsMembers[i].pubKeyAggregates = pubKeyAggs
+		//fmt.Println("secretAggregate==", simBlsMembers[i].secretAggregate)
+		//fmt.Println("groupPubKey======", simBlsMembers[i].groupPubKey)
+		//fmt.Println("pubKeyAggregates=", simBlsMembers[i].pubKeyAggregates)
 	}
-	blsGroupPoint.blsMembers = simBlsMembers
+	blsGroupPoint.BlsMembers = simBlsMembers
 	blsGroupPoint.ThresholdValue = thresValue
 }
 
@@ -148,7 +170,7 @@ func GenBlsSignShares(blsGroupPoint *BlsGroupPoint, height int64) (*BlsSharePoin
 	}
 	initMessage := "201812121348"
 	nextMessge := initMessage
-	groupSize := len(blsGroupPoint.blsMembers)
+	groupSize := len(blsGroupPoint.BlsMembers)
 	signShares := make(map[string]string, groupSize)
 	var thresSign string
 	var randSeed string
@@ -157,7 +179,7 @@ func GenBlsSignShares(blsGroupPoint *BlsGroupPoint, height int64) (*BlsSharePoin
 		if heig > 0 {
 			nextMessge = thresSign + randSeed
 		}
-		for _, blsMember := range blsGroupPoint.blsMembers {
+		for _, blsMember := range blsGroupPoint.BlsMembers {
 			var secretAgg bls.SecretKey
 			secretAgg.SetHexString(blsMember.secretAggregate)
 			signShares[blsMember.memberID] = secretAgg.Sign(nextMessge).GetHexString()
@@ -196,6 +218,17 @@ type BlsMember struct {
 	pubKeyAggregates    map[string]string
 }
 
+func (blsMember *BlsMember) GetBlsMember() {
+	fmt.Println("memberID=============", blsMember.memberID)
+	fmt.Println("priva0===============", blsMember.priva0.GetHexString())
+	fmt.Println("polyCoeffs===========", blsMember.polyCoeffs)
+	fmt.Println("commitment===========", blsMember.commitment)
+	fmt.Println("secretShares=========", blsMember.secretShares)
+	fmt.Println("receiveSecretShares==", blsMember.receiveSecretShares)
+	fmt.Println("groupPubKey==========", blsMember.groupPubKey)
+	fmt.Println("pubKeyAggregates=====", blsMember.pubKeyAggregates)
+	fmt.Println("secretAggregate======", blsMember.secretAggregate)
+}
 func RandBlsMember() BlsMember {
 	var priva0 bls.SecretKey
 	priva0.SetByCSPRNG()

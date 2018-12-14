@@ -31,12 +31,12 @@ func SeckeyAggregate(seck []bls.SecretKey) (sksum bls.SecretKey) {
 }
 
 //generate group public
-func GenGroupPubKey(pks []bls.PublicKey) (gpk *bls.PublicKey) {
+func GenGroupPubKey(pks []bls.PublicKey) (gpk bls.PublicKey) {
 	gpk.SetHexString("0")
 	for _, pk := range pks {
 		gpk.Add(&pk)
 	}
-	return
+	return gpk
 }
 
 //generate seed

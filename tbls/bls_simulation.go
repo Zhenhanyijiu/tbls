@@ -13,9 +13,10 @@ func Init() error {
 	return bls.Init(bls.CurveFp254BNb)
 }
 
-type BlsSharePoint struct {
-	SignShares     map[string]string `json:"sign_shares"`
-	ThresholdValue int               `json:"threshold_value"`
+type BlsSignSharePoint struct {
+	SignShares     []string `json:"sign_shares"`
+	SignMemberIDs  []string `json:"sign_menber_IDs"`
+	ThresholdValue int      `json:"threshold_value"`
 }
 type BlsGroupPoint struct {
 	BlsMembers     []BlsMember
@@ -162,7 +163,7 @@ func GenPubKeyAggerate(receiveComsPoint *map[string][]string, thresValue int) ma
 	return pubKeyAgg
 }
 
-func GenBlsSignShares(blsGroupPoint *BlsGroupPoint, height int64) (*BlsSharePoint, string, string) {
+func GenBlsSignShares(blsGroupPoint *BlsGroupPoint, height int64) (blsSignSharePoint *BlsSignSharePoint, thresSign string, randSeed string) {
 	bls.Init(bls.CurveFp254BNb)
 	if height < 0 {
 		fmt.Println("height is invalid!")
@@ -171,39 +172,52 @@ func GenBlsSignShares(blsGroupPoint *BlsGroupPoint, height int64) (*BlsSharePoin
 	initMessage := "201812121348"
 	nextMessge := initMessage
 	groupSize := len(blsGroupPoint.BlsMembers)
-	signShares := make(map[string]string, groupSize)
-	var thresSign string
-	var randSeed string
+	signShares := make([]string, groupSize)
+	signMemberIDs := make([]string, groupSize)
 	for heig := 0; int64(heig) <= height; heig++ {
 
 		if heig > 0 {
 			nextMessge = thresSign + randSeed
 		}
-		for _, blsMember := range blsGroupPoint.BlsMembers {
+		for index, blsMember := range blsGroupPoint.BlsMembers {
 			var secretAgg bls.SecretKey
 			secretAgg.SetHexString(blsMember.secretAggregate)
-			signShares[blsMember.memberID] = secretAgg.Sign(nextMessge).GetHexString()
+			signShares[index] = secretAgg.Sign(nextMessge).GetHexString()
+			signMemberIDs[index] = blsMember.memberID
 		}
 
-		thresSign, _ = GenThresholdSign(signShares)
+		thresSign, _ = GenThresholdSign(signShares, signMemberIDs)
 		randSeed = GenerateSeed(thresSign)
 	}
 
-	return &BlsSharePoint{
+	blsSignSharePoint = &BlsSignSharePoint{
 		SignShares:     signShares,
+		SignMemberIDs:  signMemberIDs,
 		ThresholdValue: blsGroupPoint.ThresholdValue,
-	}, thresSign, randSeed
+	}
+	return blsSignSharePoint, thresSign, randSeed
 }
 
-func GenThresholdSign(signShares map[string]string) (string, error) {
+func GenThresholdSign(signShares []string, signMemberIDs []string) (string, error) {
 	bls.Init(bls.CurveFp254BNb)
-	signVec := []string{}
-	memberIDVec := []string{}
-	for memberID, signShare := range signShares {
-		memberIDVec = append(memberIDVec, memberID)
-		signVec = append(signVec, signShare)
+	//signVec := []string{}
+	//memberIDVec := []string{}
+	//for memberID, signShare := range signShares {
+	//	memberIDVec = append(memberIDVec, memberID)
+	//	signVec = append(signVec, signShare)
+	//}
+	return SigRecover(signShares, signMemberIDs), nil
+}
+
+func RandChoiceShares(blsSignSharePoint *BlsSignSharePoint, randSignShareNum int, thresValue int) (randSignShares []string, randSignMemberIDs []string, err error) {
+	groupSize := len(blsSignSharePoint.SignShares)
+	if randSignShareNum < thresValue || randSignShareNum > groupSize {
+		//err := errors.New("Random choice sign shares number invalid!!")
+		err := fmt.Errorf("Random choice sign shares number invalid!!")
+		return nil, nil, err
 	}
-	return SigRecover(signVec, memberIDVec), nil
+
+	return nil, nil, nil
 }
 
 type BlsMember struct {

@@ -12,25 +12,25 @@ func Test10Base() {
 
 	timeStart := time.Now()
 	n := len(nums)
-	indexs := combineResult(n, m)
-	result := findNumsByIndexs(nums, indexs)
+	indexs := CombineResult(n, m)
+	result := FindNumsByIndexs(nums, indexs)
 	timeEnd := time.Now()
 
 	fmt.Println("count:", len(result))
 	fmt.Println("result:", result)
 	//fmt.Println("indexs:", indexs)
 	fmt.Println("time consume:", timeEnd.Sub(timeStart))
-	//结果是否正确
+	//if the result is right or not
 	rightCount := mathCombine(n, m)
 	if rightCount == len(result) {
-		fmt.Println("结果正确")
+		fmt.Println("result is right")
 	} else {
-		fmt.Println("结果错误，正确结果是：", rightCount)
+		fmt.Println("result is wrong，the right result is：", rightCount)
 	}
 }
 
 //组合算法(从nums中取出m个数)
-func combineResult(n int, m int) [][]int {
+func CombineResult(n int, m int) [][]int {
 	if m < 1 || m > n {
 		fmt.Println("Illegal argument. Param m must between 1 and len(nums).")
 		return [][]int{}
@@ -105,7 +105,7 @@ func moveOneToLeft(leftNums []int) {
 }
 
 //根据索引号数组得到元素数组
-func findNumsByIndexs(nums []int, indexs [][]int) [][]int {
+func FindNumsByIndexs(nums []int, indexs [][]int) [][]int {
 	if len(indexs) == 0 {
 		return [][]int{}
 	}
@@ -125,17 +125,17 @@ func findNumsByIndexs(nums []int, indexs [][]int) [][]int {
 	return result
 }
 
-//数学方法计算排列数(从n中取m个数)
+//compute the number of permutation (n,m)
 func mathPermutation(n int, m int) int {
 	return factorial(n) / factorial(n-m)
 }
 
-//数学方法计算组合数(从n中取m个数)
+//compute the number of combination (n,m)
 func mathCombine(n int, m int) int {
 	return factorial(n) / (factorial(n-m) * factorial(m))
 }
 
-//阶乘
+//compute the factorial for n
 func factorial(n int) int {
 	result := 1
 	for i := 2; i <= n; i++ {
@@ -148,7 +148,7 @@ func factorial(n int) int {
 //从n个数中取出m个进行排列，其实就是组合算法之后，对选中的m个数进行全排列
 func pailieResult(nums int, m int) [][]int {
 	//组合结果
-	zuhe := combineResult(nums, m)
+	zuhe := CombineResult(nums, m)
 
 	//保存最终排列结果
 	result := make([][]int, 0)

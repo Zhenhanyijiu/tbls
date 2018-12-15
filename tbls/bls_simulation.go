@@ -3,6 +3,7 @@ package tbls
 import (
 	"fmt"
 	"github.com/zhenhanyijiu/tbls/libbls/bls/bls"
+	"github.com/zhenhanyijiu/tbls/tbls/combine"
 )
 
 const (
@@ -209,15 +210,29 @@ func GenThresholdSign(signShares []string, signMemberIDs []string) (string, erro
 	return SigRecover(signShares, signMemberIDs), nil
 }
 
-func RandChoiceShares(blsSignSharePoint *BlsSignSharePoint, randSignShareNum int, thresValue int) (randSignShares []string, randSignMemberIDs []string, err error) {
+func RandChoiceShares(blsSignSharePoint *BlsSignSharePoint, randSignShareNum int, thresValue int) (randSignShares []string, randSignMemberIDs []string, resultCombine [][]int, err error) {
 	groupSize := len(blsSignSharePoint.SignShares)
 	if randSignShareNum < thresValue || randSignShareNum > groupSize {
 		//err := errors.New("Random choice sign shares number invalid!!")
 		err := fmt.Errorf("Random choice sign shares number invalid!!")
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+	//combination
+	randSignShares = make([]string, randSignShareNum)
+	randSignMemberIDs = make([]string, randSignShareNum)
+	numArray := make([]int, groupSize)
+	for index, _ := range blsSignSharePoint.SignShares {
+		numArray[index] = index
 	}
 
-	return nil, nil, nil
+	indexs := combine.CombineResult(groupSize, randSignShareNum)
+	resultCombine = combine.FindNumsByIndexs(numArray, indexs)
+
+	for i := 0; i < randSignShareNum; i++ {
+		randSignShares[i] = blsSignSharePoint.SignShares[resultCombine[0][i]]
+		randSignMemberIDs[i] = blsSignSharePoint.SignMemberIDs[resultCombine[0][i]]
+	}
+	return randSignShares, randSignMemberIDs, resultCombine, nil
 }
 
 type BlsMember struct {

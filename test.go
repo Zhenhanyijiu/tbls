@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"github.com/zhenhanyijiu/tbls/tbls"
+	"io"
 )
 
 var (
@@ -49,5 +52,28 @@ func main() {
 		fmt.Println("threshold signature test failed")
 	}
 	//combine.Test10Base()
+	buf := make([]byte, 32)
+	n, err := io.ReadFull(rand.Reader, buf)
+	fmt.Println("n=", n, "err=", err, "buf=", buf)
+	text1 := []byte("123")
+	text2 := []byte("456")
+	h1 := sha256.New()
+	h1.Write(text1)
+	h1.Write(text2)
+	res1 := h1.Sum(nil)
+	fmt.Println("res1=", res1)
+
+	h2 := sha256.New()
+	tx3 := []byte("123456")
+	h2.Write(tx3)
+	//sha256.Write(text2)
+	res2 := h2.Sum(nil)
+	fmt.Println("res2=", res2)
+
+	h3 := sha256.New()
+	h3.Write(text1)
+	//h3.Write(text2)
+	res3 := h3.Sum(nil)
+	fmt.Println("res3=", res3)
 
 }

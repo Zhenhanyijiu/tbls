@@ -6,7 +6,7 @@ import (
 )
 
 //combination problem ,choice m from n
-func Test10Base() {
+func TestComibine() {
 	nums := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	m := 5
 
@@ -21,7 +21,7 @@ func Test10Base() {
 	//fmt.Println("indexs:", indexs)
 	fmt.Println("time consume:", timeEnd.Sub(timeStart))
 	//if the result is right or not
-	rightCount := mathCombine(n, m)
+	rightCount := CountCombination(n, m)
 	if rightCount == len(result) {
 		fmt.Println("result is right")
 	} else {
@@ -37,7 +37,7 @@ func CombineResult(n int, m int) [][]int {
 	}
 
 	//保存最终结果的数组，总数直接通过数学公式计算
-	result := make([][]int, 0, mathCombine(n, m))
+	result := make([][]int, 0, CountCombination(n, m))
 	//保存每一个组合的索引的数组，1表示选中，0表示未选中
 	indexs := make([]int, n)
 	for i := 0; i < n; i++ {
@@ -126,12 +126,12 @@ func FindNumsByIndexs(nums []int, indexs [][]int) [][]int {
 }
 
 //compute the number of permutation (n,m)
-func mathPermutation(n int, m int) int {
+func CountPermutation(n int, m int) int {
 	return factorial(n) / factorial(n-m)
 }
 
 //compute the number of combination (n,m)
-func mathCombine(n int, m int) int {
+func CountCombination(n int, m int) int {
 	return factorial(n) / (factorial(n-m) * factorial(m))
 }
 
@@ -146,7 +146,7 @@ func factorial(n int) int {
 }
 
 //从n个数中取出m个进行排列，其实就是组合算法之后，对选中的m个数进行全排列
-func pailieResult(nums int, m int) [][]int {
+func PermutationResult(nums int, m int) [][]int {
 	//组合结果
 	zuhe := CombineResult(nums, m)
 
@@ -154,7 +154,7 @@ func pailieResult(nums int, m int) [][]int {
 	result := make([][]int, 0)
 	//遍历组合结果，对每一项进行全排列
 	for _, v := range zuhe {
-		p := quanPailie(v)
+		p := CompletePermutation(v)
 		result = append(result, p...)
 	}
 
@@ -162,7 +162,7 @@ func pailieResult(nums int, m int) [][]int {
 }
 
 //n个数全排列//如输入[1 2 3]，则返回[123 132 213 231 312 321]
-func quanPailie(nums []int) [][]int {
+func CompletePermutation(nums []int) [][]int {
 	COUNT := len(nums)
 	//检查
 	if COUNT == 0 || COUNT > 10 {
@@ -175,7 +175,7 @@ func quanPailie(nums []int) [][]int {
 	}
 
 	//否则，将最后一个数插入到前面的排列数中的所有位置
-	return insertItem(quanPailie(nums[:COUNT-1]), nums[COUNT-1])
+	return insertItem(CompletePermutation(nums[:COUNT-1]), nums[COUNT-1])
 }
 func insertItem(res [][]int, insertNum int) [][]int {
 	//保存结果的slice
